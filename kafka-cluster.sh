@@ -1,8 +1,11 @@
-helm install strimzi-cluster-operator oci://quay.io/strimzi-helm/strimzi-kafka-operator
+#!/usr/bin/env bash
 
+set -e
 
-helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
-  --repo oci://quay.io/strimzi-helm/strimzi-kafka-operator strimzi-cluster-operator strimzi-kafka-operator --values - <<EOF
+# Deploy Kafka CLuster
+
+helm install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
+  strimzi-operator oci://quay.io/strimzi-helm/strimzi-kafka-operator --values - <<EOF
 replicas: 3
 EOF
 
@@ -64,6 +67,12 @@ spec:
         port: 9093
         type: internal
         tls: true
+        authentication:
+          type: tls
+    authorization:
+      type: simple
+      superUsers:
+        - CN=root
     config:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
@@ -75,19 +84,82 @@ spec:
     userOperator: {}
 EOF
 
-
-helm upgrade --install --wait --timeout 35m --atomic --namespace ssr --create-namespace
---repo https://lsst-sqre.github.io/charts/ ssr strimzi-registry-operator  --values - <<EOF
+# Deploy Schema Registry and proper Topic and User
+helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
+  --repo https://lsst-sqre.github.io/charts/ ssr strimzi-registry-operator  --values - <<EOF
 clusterName: kafka-cluster
 clusterNamespace: kafka
-operatorNamespace: ssr
+operatorNamespace: kafka
 EOF
+
+cat <<EOF | kubectl apply -n kafka -f -
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: strimzi-registry-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: strimzi-registry-operator
+rules:
+
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [list, get, watch]
+
+  # Kopf: posting the events about the handlers progress/errors.
+  - apiGroups: [events.k8s.io]
+    resources: [events]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create]
+
+  # Application: watching & handling for the custom resource we declare.
+  - apiGroups: [roundtable.lsst.codes]
+    resources: [strimzischemaregistries]
+    verbs: [get, list, watch, patch]
+
+  # Access to the built-in resources the operator manages
+  - apiGroups: [""]
+    resources: [secrets, configmaps, services]
+    verbs: [get, list, watch, patch, create]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: [get, list, watch, patch, create]
+
+  # Access to the KafkaUser resource
+  - apiGroups: [kafka.strimzi.io]
+    resources: [kafkausers, kafkas]
+    verbs: [list, get, watch]
+
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: [get, list, "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: strimzi-registry-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: strimzi-registry-operator
+subjects:
+  - kind: ServiceAccount
+    name: strimzi-registry-operator
+    namespace: kafka
+EOF
+
 
 cat << EOF | kubectl apply -f -
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
   name: registry-schemas
+  namespace: kafka
   labels:
     strimzi.io/cluster: kafka-cluster
 spec:
@@ -101,6 +173,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaUser
 metadata:
   name: confluent-schema-registry
+  namespace: kafka
   labels:
     strimzi.io/cluster: kafka-cluster
 spec:
@@ -117,22 +190,28 @@ spec:
           type: topic
           name: registry-schemas
           patternType: literal
-        operation: All
+        operations:
+          - All
         type: allow
+        host: "*"
       # Allow all operations on the schema-registry* group
       - resource:
           type: group
           name: schema-registry
           patternType: prefix
-        operation: All
+        operations: 
+          - All
         type: allow
+        host: "*"
       # Allow Describe on the __consumer_offsets topic
       - resource:
           type: topic
           name: __consumer_offsets
           patternType: literal
-        operation: Describe
+        operations: 
+          - Describe
         type: allow
+        host: "*"
 EOF
 
 cat << EOF | kubectl apply -f -
@@ -140,6 +219,7 @@ apiVersion: roundtable.lsst.codes/v1beta1
 kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry
+  namespace: kafka
 spec:
   strimziVersion: v1beta2
   listener: tls
