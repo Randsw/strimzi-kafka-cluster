@@ -31,7 +31,7 @@ metadata:
   name: broker
   namespace: kafka
   labels:
-    strimzi.io/cluster: my-cluster
+    strimzi.io/cluster: kafka-cluster
 spec:
   replicas: 3
   roles:
@@ -46,7 +46,7 @@ spec:
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
-  name: my-cluster
+  name: kafka-cluster
   namespace: kafka
   annotations:
     strimzi.io/node-pools: enabled
@@ -74,3 +74,74 @@ spec:
     topicOperator: {}
     userOperator: {}
 EOF
+
+
+helm upgrade --install --wait --timeout 35m --atomic --namespace ssr --create-namespace
+--repo https://lsst-sqre.github.io/charts/ ssr strimzi-registry-operator  --values - <<EOF
+clusterName: kafka-cluster
+clusterNamespace: kafka
+operatorNamespace: ssr
+EOF
+
+cat << EOF | kubectl apply -f -
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: registry-schemas
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  partitions: 1
+  replicas: 3
+  config:
+    # http://kafka.apache.org/documentation/#topicconfigs
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: confluent-schema-registry
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  authentication:
+    type: tls
+  authorization:
+    # Official docs on authorizations required for the Schema Registry:
+    # https://docs.confluent.io/current/schema-registry/security/index.html#authorizing-access-to-the-schemas-topic
+    type: simple
+    acls:
+      # Allow all operations on the registry-schemas topic
+      # Read, Write, and DescribeConfigs are known to be required
+      - resource:
+          type: topic
+          name: registry-schemas
+          patternType: literal
+        operation: All
+        type: allow
+      # Allow all operations on the schema-registry* group
+      - resource:
+          type: group
+          name: schema-registry
+          patternType: prefix
+        operation: All
+        type: allow
+      # Allow Describe on the __consumer_offsets topic
+      - resource:
+          type: topic
+          name: __consumer_offsets
+          patternType: literal
+        operation: Describe
+        type: allow
+EOF
+
+cat << EOF | kubectl apply -f -
+apiVersion: roundtable.lsst.codes/v1beta1
+kind: StrimziSchemaRegistry
+metadata:
+  name: confluent-schema-registry
+spec:
+  strimziVersion: v1beta2
+  listener: tls
+EOF
+
