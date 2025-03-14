@@ -22,11 +22,11 @@ spec:
             cpu: "500m"
         env:
         - name:  KAFKA_URL
-          value:  ENVVARVALUE
+          value:  !!!ENVVARVALUE
         - name:  TOPIC
-          value:  example
+          value:  example-topic
         - name:  SCHEMA_REGISTRY_URL
-          value:  ENVVARVALUE  
+          value:  !!!ENVVARVALUE  
         volumeMounts:
         - name: kafka-ca-cert
           readOnly: true

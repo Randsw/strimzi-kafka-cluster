@@ -1,0 +1,34 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: consumer-user
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  authentication:
+    type: tls
+  authorization:
+    # Official docs on authorizations required for the Schema Registry:
+    # https://docs.confluent.io/current/schema-registry/security/index.html#authorizing-access-to-the-schemas-topic
+    type: simple
+    acls:
+      # Allow all operations on the registry-schemas topic
+      # Read, Write, and DescribeConfigs are known to be required
+      - resource:
+          type: topic
+          name: example-topic
+          patternType: literal
+        operations:
+          - All
+        type: allow
+        host: "*"
+      # Allow all operations on the schema-registry* group
+      - resource:
+          type: group
+          name: example-group
+          patternType: prefix
+        operations: 
+          - All
+        type: allow
+        host: "*"

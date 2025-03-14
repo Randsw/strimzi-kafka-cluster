@@ -22,15 +22,15 @@ spec:
             cpu: "500m"
         env:
         - name:  BOOTSTRAP_SERVERS
-          value:  ENVVARVALUE
+          value:  !!!!ENVVARVALUE
         - name:  TOPIC
           value:  example
         - name:  SCHEMA_REGISTRY_URL
-          value:  ENVVARVALUE
+          value:  !!!!ENVVARVALUE
         - name:  GROUP_ID
           value:  example-group
         - name:  OUT_ADDRESS
-          value:  ENVVARVALUE  
+          value:  !!!!ENVVARVALUE  
         volumeMounts:
         - name: kafka-ca-cert
           readOnly: true
