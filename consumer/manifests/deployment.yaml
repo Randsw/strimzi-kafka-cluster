@@ -22,15 +22,15 @@ spec:
             cpu: "500m"
         env:
         - name:  BOOTSTRAP_SERVERS
-          value:  !!!!ENVVARVALUE
+          value: kafka-cluster-kafka-bootstrap:9093
         - name:  TOPIC
           value:  example
         - name:  SCHEMA_REGISTRY_URL
-          value:  !!!!ENVVARVALUE
+          value: confluent-schema-registry:8081
         - name:  GROUP_ID
           value:  example-group
         - name:  OUT_ADDRESS
-          value:  !!!!ENVVARVALUE  
+          value: kafka-http-server:80
         volumeMounts:
         - name: kafka-ca-cert
           readOnly: true
@@ -41,9 +41,9 @@ spec:
       volumes:
         - name: cluster-ca-cert
           secret:
-            secretName: cluster-ca-cert
+            secretName: kafka-cluster-cluster-ca-cert
             defaultMode: 0400
         - name: client-mtls
           secret:
-            secretName: user-ca
+            secretName: consumer-user
             defaultMode: 0400

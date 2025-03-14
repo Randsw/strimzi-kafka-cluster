@@ -61,7 +61,7 @@ func main() {
 		os.Exit(0)
 	}()
 
-	client, err := schemaregistry.NewClient(schemaregistry.NewConfig(schemaRegistryURL))
+	client, err := schemaregistry.NewClient(schemaregistry.NewConfig(fmt.Sprintf("http://%s", schemaRegistryURL)))
 
 	if err != nil {
 		logger.Error("Failed to create schema registry client: %s\n", zap.String("err", err.Error()))
