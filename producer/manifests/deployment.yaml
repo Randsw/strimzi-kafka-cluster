@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-producer
+  labels:
+    app: producer
+spec:
+  selector:
+    matchLabels:
+      app: producer
+  template:
+    metadata:
+      labels:
+        app: producer
+    spec:
+      containers:
+      - name: producer
+        image: ghcr.io/randsw/kafka-producer
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        env:
+        - name:  KAFKA_URL
+          value:  ENVVARVALUE
+        - name:  TOPIC
+          value:  example
+        - name:  SCHEMA_REGISTRY_URL
+          value:  ENVVARVALUE  
+        volumeMounts:
+        - name: kafka-ca-cert
+          readOnly: true
+          mountPath: "/tmp/ca"
+        - name: client-mtls
+          readOnly: true
+          mountPath: "/tmp/client"
+      volumes:
+        - name: cluster-ca-cert
+          secret:
+            secretName: cluster-ca-cert
+            defaultMode: 0400
+        - name: client-mtls
+          secret:
+            secretName: user-ca
+            defaultMode: 0400
