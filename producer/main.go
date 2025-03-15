@@ -69,7 +69,7 @@ func Serialize(m *message, ser *jsonschema.Serializer, topic string) []byte {
 	payload, err := ser.Serialize(topic, &m)
 	if err != nil {
 		logger.Error("Failed to serialize payload: %s\n", zap.String("err", err.Error()))
-		os.Exit(1)
+		//os.Exit(1)
 	}
 	return payload
 }
@@ -88,7 +88,7 @@ func main() {
 
 	if err != nil {
 		logger.Error("Failed to create schema registry client: %s\n", zap.String("err", err.Error()))
-		os.Exit(1)
+		//os.Exit(1)
 	}
 	// Subject name in schema registry must match topic name!!!!!!!
 	ser, err := jsonschema.NewSerializer(client, serde.ValueSerde, jsonschema.NewSerializerConfig())
@@ -105,19 +105,21 @@ func main() {
 	for {
 		randomValue := r.Intn(3)
 		key := fmt.Sprintf("Key-%s", ID[randomValue])
+		val := &message{
+			User:  names[r.Intn(len(names)-1)],
+			Car:   cars[r.Intn(len(cars)-1)],
+			Color: color[r.Intn(len(color)-1)],
+		}
 		msg := kafka.Message{
-			Key: []byte(key),
-			Value: Serialize(&message{
-				User:  names[r.Intn(len(names)-1)],
-				Car:   cars[r.Intn(len(cars)-1)],
-				Color: color[r.Intn(len(color)-1)],
-			}, ser, topic),
+			Key:   []byte(key),
+			Value: Serialize(val, ser, topic),
 		}
 		err := writer.WriteMessages(context.Background(), msg)
 		if err != nil {
 			logger.Error("Failed to create serializer: %s\n", zap.String("err", err.Error()))
 		} else {
-			logger.Info("produced", zap.String("key", key))
+			logger.Info("produced", zap.String("key", key), zap.String("message", fmt.Sprintf("%s", val)))
+			logger.Info("Payload out", zap.String("Payload", fmt.Sprintf("%s", msg.Value)))
 		}
 		time.Sleep(1 * time.Second)
 	}

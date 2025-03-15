@@ -14,7 +14,7 @@ import (
 )
 
 type statHandler struct {
-	Data statistic
+	Data *statistic
 }
 
 type payload struct {
@@ -33,7 +33,7 @@ type message struct {
 type statistic struct {
 	Total          int         `json:"total"`
 	TotalPartition map[int]int `json:"total_partition"`
-	LastMessage    message     `json:"last_message"`
+	LastMessage    *message    `json:"last_message"`
 }
 
 func (stat *statHandler) stats(w http.ResponseWriter, r *http.Request) {
@@ -56,12 +56,15 @@ func (stat *statHandler) kafkaStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Info("Received request", zap.String("User", Payload.Topic), zap.Int("User", Payload.Partition),
+	logger.Info("Received request", zap.String("Topic", Payload.Topic), zap.Int("Partition", Payload.Partition), zap.String("Key", Payload.Key),
 		zap.String("User", Payload.Message.User), zap.String("Car", Payload.Message.Car), zap.String("Color", Payload.Message.Color))
 
 	stat.Data.Total += 1
+	if _, ok := stat.Data.TotalPartition[Payload.Partition]; !ok {
+		stat.Data.TotalPartition[Payload.Partition] = 1
+	}
 	stat.Data.TotalPartition[Payload.Partition] += 1
-	stat.Data.LastMessage = Payload.Message
+	stat.Data.LastMessage = &Payload.Message
 
 	w.WriteHeader(http.StatusOK)
 
@@ -88,7 +91,12 @@ func main() {
 		done <- true
 		os.Exit(0)
 	}()
-	h := &statHandler{Data: statistic{}}
+	data := &statistic{
+		LastMessage:    &message{},
+		Total:          0,
+		TotalPartition: map[int]int{},
+	}
+	h := &statHandler{Data: data}
 	mux := mux.NewRouter()
 	mux.HandleFunc("/stats", h.kafkaStatus)
 	mux.HandleFunc("/", h.stats)

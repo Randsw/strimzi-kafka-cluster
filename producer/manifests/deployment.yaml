@@ -16,6 +16,7 @@ spec:
       containers:
       - name: producer
         image: ghcr.io/randsw/kafka-producer
+        imagePullPolicy: Always
         resources:
           limits:
             memory: "128Mi"
@@ -24,11 +25,11 @@ spec:
         - name:  KAFKA_URL
           value: kafka-cluster-kafka-bootstrap:9093
         - name:  TOPIC
-          value:  example-topic
+          value: example-topic
         - name:  SCHEMA_REGISTRY_URL
           value: confluent-schema-registry:8081
         volumeMounts:
-        - name: kafka-ca-cert
+        - name: cluster-ca-cert
           readOnly: true
           mountPath: "/tmp/ca"
         - name: client-mtls
@@ -38,8 +39,8 @@ spec:
         - name: cluster-ca-cert
           secret:
             secretName: kafka-cluster-cluster-ca-cert
-            defaultMode: 0400
+            defaultMode: 0444
         - name: client-mtls
           secret:
             secretName: producer-user
-            defaultMode: 0400
+            defaultMode: 0444

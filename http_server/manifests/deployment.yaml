@@ -16,6 +16,7 @@ spec:
       containers:
       - name: producer
         image: ghcr.io/randsw/kafka-http-server
+        imagePullPolicy: Always
         resources:
           limits:
             memory: "128Mi"
