@@ -170,5 +170,6 @@ func main() {
 			}
 		}
 	}()
+	// Wait for SITERM or SIGINT
 	<-done
 }

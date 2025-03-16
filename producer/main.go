@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
@@ -78,6 +81,25 @@ func main() {
 	//Loger Initialization
 	logger.InitLogger()
 	defer logger.CloseLogger()
+	//Create channel for signal
+	cancelChan := make(chan os.Signal, 1)
+	// catch SIGETRM or SIGINTERRUPT
+	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
+	done := make(chan bool, 1)
+
+	var wg sync.WaitGroup
+
+	go func() {
+		sig := <-cancelChan
+		logger.Info("Caught signal", zap.String("Signal", sig.String()))
+		logger.Info("Wait for 1 second to finish processing")
+		time.Sleep(1 * time.Second)
+		logger.Info("Exiting.....")
+		// shutdown other goroutines gracefully
+		// close other resources
+		done <- true
+		os.Exit(0)
+	}()
 	kafkaURL := os.Getenv("KAFKA_URL")
 	topic := os.Getenv("TOPIC")
 	schemaRegistryURL := os.Getenv("SCHEMA_REGISTRY_URL")
@@ -102,24 +124,30 @@ func main() {
 	names := []string{"John", "Mike", "Dwight", "Pam", "Kevin"}
 	cars := []string{"Kia", "Ford", "BMW"}
 	color := []string{"Red", "Black", "White", "Blue", "Green", "Gray"}
-	for {
-		randomValue := r.Intn(3)
-		key := fmt.Sprintf("Key-%s", ID[randomValue])
-		val := &message{
-			User:  names[r.Intn(len(names)-1)],
-			Car:   cars[r.Intn(len(cars)-1)],
-			Color: color[r.Intn(len(color)-1)],
+	wg.Add(1)
+	go func() {
+		for {
+			defer wg.Done()
+			randomValue := r.Intn(3)
+			key := fmt.Sprintf("Key-%s", ID[randomValue])
+			val := &message{
+				User:  names[r.Intn(len(names)-1)],
+				Car:   cars[r.Intn(len(cars)-1)],
+				Color: color[r.Intn(len(color)-1)],
+			}
+			msg := kafka.Message{
+				Key:   []byte(key),
+				Value: Serialize(val, ser, topic),
+			}
+			err := writer.WriteMessages(context.Background(), msg)
+			if err != nil {
+				logger.Error("Failed to create serializer: %s\n", zap.String("err", err.Error()))
+				return
+			} else {
+				logger.Info("produced", zap.String("key", key), zap.String("message", fmt.Sprintf("%s", val)))
+			}
+			time.Sleep(1 * time.Second)
 		}
-		msg := kafka.Message{
-			Key:   []byte(key),
-			Value: Serialize(val, ser, topic),
-		}
-		err := writer.WriteMessages(context.Background(), msg)
-		if err != nil {
-			logger.Error("Failed to create serializer: %s\n", zap.String("err", err.Error()))
-		} else {
-			logger.Info("produced", zap.String("key", key), zap.String("message", fmt.Sprintf("%s", val)))
-		}
-		time.Sleep(1 * time.Second)
-	}
+	}()
+	<-done
 }

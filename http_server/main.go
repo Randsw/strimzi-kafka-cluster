@@ -113,5 +113,6 @@ func main() {
 	if err != nil {
 		logger.Error("Fail to start http server", zap.String("err", err.Error()))
 	}
+	// Wait for SITERM or SIGINT
 	<-done
 }

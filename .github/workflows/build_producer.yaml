@@ -8,9 +8,8 @@ on:
     - 'producer/**.mod'
     - 'producer/**.sum'
     - 'producer/Dockerfile'
-env:
-  GO_VERSION: 1.24
 permissions:
+    contents: read
     packages: write
 jobs:
     Deploy:
@@ -29,6 +28,11 @@ jobs:
         with:
           images: ghcr.io/randsw/kafka-producer
           flavor: latest=true
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=ref,event=tag
+            type=semver,pattern={{version}}
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
@@ -44,6 +48,6 @@ jobs:
           # relative path to the place where source code with Dockerfile is located
           context: producer/
           # Note: tags has to be all lower-case
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/randsw/kafka-producer:latest
           labels: ${{ steps.meta.outputs.labels }}
           push: true
