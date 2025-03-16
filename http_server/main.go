@@ -88,7 +88,7 @@ func main() {
 		// close other resources
 		done <- true
 		os.Exit(0)
-
+	}()
 	data := &statistic{
 		LastMessage:    &message{},
 		Total:          0,
