@@ -59,6 +59,7 @@ func (stat *statHandler) kafkaStatus(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Received request", zap.String("Topic", Payload.Topic), zap.Int("Partition", Payload.Partition), zap.String("Key", Payload.Key),
 		zap.String("User", Payload.Message.User), zap.String("Car", Payload.Message.Car), zap.String("Color", Payload.Message.Color))
 
+	// Add data to statistic
 	stat.Data.Total += 1
 	if _, ok := stat.Data.TotalPartition[Payload.Partition]; !ok {
 		stat.Data.TotalPartition[Payload.Partition] = 1
