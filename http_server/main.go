@@ -66,7 +66,7 @@ func (stat *statHandler) kafkaStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	stat.Data.TotalPartition[Payload.Partition] += 1
 	stat.Data.LastMessage = &Payload.Message
-
+	// Return response
 	w.WriteHeader(http.StatusOK)
 }
 
