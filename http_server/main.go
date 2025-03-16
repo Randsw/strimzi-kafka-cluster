@@ -48,7 +48,7 @@ func (stat *statHandler) stats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (stat *statHandler) kafkaStatus(w http.ResponseWriter, r *http.Request) {
-
+	// Recieve message and add to statistics
 	var Payload payload
 
 	err := json.NewDecoder(r.Body).Decode(&Payload)
@@ -93,6 +93,7 @@ func main() {
 		done <- true
 		os.Exit(0)
 	}()
+	// Create empty struct
 	data := &statistic{
 		LastMessage:    &message{},
 		Total:          0,
