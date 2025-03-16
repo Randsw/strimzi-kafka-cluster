@@ -42,7 +42,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           # relative path to the place where source code with Dockerfile is located
-          context: .
+          context: consumer/
           # Note: tags has to be all lower-case
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

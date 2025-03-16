@@ -37,6 +37,7 @@ type statistic struct {
 }
 
 func (stat *statHandler) stats(w http.ResponseWriter, r *http.Request) {
+	// Display statistic information
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(stat.Data)
 	if err != nil {
