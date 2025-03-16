@@ -56,7 +56,6 @@ func (stat *statHandler) kafkaStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	logger.Info("Received request", zap.String("Topic", Payload.Topic), zap.Int("Partition", Payload.Partition), zap.String("Key", Payload.Key),
 		zap.String("User", Payload.Message.User), zap.String("Car", Payload.Message.Car), zap.String("Color", Payload.Message.Color))
 
@@ -69,14 +68,12 @@ func (stat *statHandler) kafkaStatus(w http.ResponseWriter, r *http.Request) {
 	stat.Data.LastMessage = &Payload.Message
 
 	w.WriteHeader(http.StatusOK)
-
 }
 
 func main() {
 	//Loger Initialization
 	logger.InitLogger()
 	defer logger.CloseLogger()
-
 	//Create channel for signal
 	cancelChan := make(chan os.Signal, 1)
 	// catch SIGETRM or SIGINTERRUPT

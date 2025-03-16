@@ -9,6 +9,7 @@ on:
     - 'http_server/**.sum'
     - 'http_server/Dockerfile'
 permissions:
+    contents: read
     packages: write
 jobs:
     Deploy:
