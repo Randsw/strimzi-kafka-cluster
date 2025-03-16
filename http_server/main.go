@@ -89,7 +89,6 @@ func main() {
 		done <- true
 		os.Exit(0)
 	}()
-	// Create empty struct
 	data := &statistic{
 		LastMessage:    &message{},
 		Total:          0,

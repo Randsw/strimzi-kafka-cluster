@@ -48,6 +48,6 @@ jobs:
           # relative path to the place where source code with Dockerfile is located
           context: http_server/
           # Note: tags has to be all lower-case
-          tags: latest
+          tags: ghcr.io/randsw/kafka-http-server:latest
           labels: ${{ steps.meta.outputs.labels }}
           push: true
