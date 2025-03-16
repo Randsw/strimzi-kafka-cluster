@@ -13,7 +13,7 @@ spec:
     # https://docs.confluent.io/current/schema-registry/security/index.html#authorizing-access-to-the-schemas-topic
     type: simple
     acls:
-      # Allow all operations on the registry-schemas topic
+      # Allow all operations on the example-topic topic
       # Read, Write, and DescribeConfigs are known to be required
       - resource:
           type: topic

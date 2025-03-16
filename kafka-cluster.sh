@@ -223,4 +223,27 @@ metadata:
 spec:
   strimziVersion: v1beta2
   listener: tls
+  registryImage: confluentinc/cp-schema-registry
+  registryImageTag: "7.9.0"
+EOF
+
+cat << EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: schema-ingress
+  namespace: kafka
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "schema.kind.cluster"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: confluent-schema-registry
+            port:
+              number: 8081
 EOF

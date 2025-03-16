@@ -176,12 +176,12 @@ EOF
 dnsmasq(){
   log "Hosts ..."
   local INGRESS_LB_IP=$(get_service_lb_ip ingress-nginx ingress-nginx-controller)
-  echo "$INGRESS_LB_IP schema.kind.cluster" | sudo tee -a /etc/hosts
+  echo "$INGRESS_LB_IP schema.kind.cluster server.kind.cluster" | sudo tee -a /etc/hosts
 }
 
 cleanup(){
   log "CLEANUP ..."
-  sudo sed -i '/schema.kind.cluster$/d' /etc/hosts
+  sudo sed -i '/schema.kind.cluster server.kind.cluster$/d' /etc/hosts
   kind delete cluster || true
 }
 
