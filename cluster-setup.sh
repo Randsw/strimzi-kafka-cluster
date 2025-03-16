@@ -56,7 +56,7 @@ proxy(){
   local NAME=$1
   local TARGET=$2
 
-  if [ -z $(docker ps --filter name=^proxy$ --format="{{ .Names }}") ]
+  if [ -z $(docker ps --filter name=$NAME --format="{{ .Names }}") ]
   then
     docker run -d --name $NAME --restart=always --net=kind -e REGISTRY_PROXY_REMOTEURL=$TARGET registry:2
     echo "Proxy $NAME (-> $TARGET) created"

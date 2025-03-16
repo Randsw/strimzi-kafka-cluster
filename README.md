@@ -30,13 +30,13 @@ To load schema in schema registry see example in `schema-install.sh`
 
 First we must create example topic and user for connection to Kafka
 
-Run `./producer/manifests/kafka-user.yaml` to create user named `producer-user`
+Run `kubectl apply -f ./producer/manifests/kafka-user.yaml` to create user named `producer-user`
 
-Run `./producer/manifests/kafka-topic.yaml` to create topic named `example-topic` with 3 partition
+Run `kubectl apply -f ./producer/manifests/kafka-topic.yaml` to create topic named `example-topic` with 3 partition
 
 Now we ready to deploy our producer:
 
-Run `./producer/manifests/deployment.yaml` to create producer.
+Run `kubectl apply -f ./producer/manifests/deployment.yaml` to create producer.
 
 Producer code can be find in `./producer` folder
 
@@ -58,11 +58,11 @@ Balance algoritm is `Hash` so message with equal key go to same partition.
 
 ## Deploy statistic server
 
-Run `./http_server/manifests/deployment.yaml` to deploy topic statistic server
+Run `kubectl apply -f ./http_server/manifests/deployment.yaml` to deploy topic statistic server
 
-Run `./http_server/manifests/service.yaml` to deploy service
+Run `kubectl apply -f ./http_server/manifests/service.yaml` to deploy service
 
-Run `./http_server/manifests/service.yaml` to deploy ingress
+Run `kubectl apply -f ./http_server/manifests/service.yaml` to deploy ingress
 
 Now statistic server opens at `server.kind.cluster`
 
@@ -78,9 +78,9 @@ Also we can see last message.
 
 To deploy consumer group:
 
-Run `./consumer/manifests/kafka-user.yaml` to deploy consumer user named `consumer-user`.
+Run `kubectl apply -f ./consumer/manifests/kafka-user.yaml` to deploy consumer user named `consumer-user`.
 
-Run `./consumer/manifests/deployment.yaml` to deploy consumer group with 3 instances.
+Run `kubectl apply -f ./consumer/manifests/deployment.yaml` to deploy consumer group with 3 instances.
 
 ## Result
 
