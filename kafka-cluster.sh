@@ -84,75 +84,7 @@ spec:
     userOperator: {}
 EOF
 
-# Deploy Schema Registry and proper Topic and User
-helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
-  --repo https://lsst-sqre.github.io/charts/ ssr strimzi-registry-operator  --values - <<EOF
-clusterName: kafka-cluster
-clusterNamespace: kafka
-operatorNamespace: kafka
-EOF
-
-cat <<EOF | kubectl apply -n kafka -f -
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: strimzi-registry-operator
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: strimzi-registry-operator
-rules:
-
-  - apiGroups: [apiextensions.k8s.io]
-    resources: [customresourcedefinitions]
-    verbs: [list, get, watch]
-
-  # Kopf: posting the events about the handlers progress/errors.
-  - apiGroups: [events.k8s.io]
-    resources: [events]
-    verbs: [create]
-  - apiGroups: [""]
-    resources: [events]
-    verbs: [create]
-
-  # Application: watching & handling for the custom resource we declare.
-  - apiGroups: [roundtable.lsst.codes]
-    resources: [strimzischemaregistries]
-    verbs: [get, list, watch, patch]
-
-  # Access to the built-in resources the operator manages
-  - apiGroups: [""]
-    resources: [secrets, configmaps, services]
-    verbs: [get, list, watch, patch, create]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: [get, list, watch, patch, create]
-
-  # Access to the KafkaUser resource
-  - apiGroups: [kafka.strimzi.io]
-    resources: [kafkausers, kafkas]
-    verbs: [list, get, watch]
-
-  - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: [get, list, "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: strimzi-registry-operator
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: strimzi-registry-operator
-subjects:
-  - kind: ServiceAccount
-    name: strimzi-registry-operator
-    namespace: kafka
-EOF
-
+# Deploy ssr-operator and proper Topic and User
 
 cat << EOF | kubectl apply -f -
 apiVersion: kafka.strimzi.io/v1beta2
@@ -214,17 +146,31 @@ spec:
         host: "*"
 EOF
 
+# Install ssr-operator
+helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
+  --repo https://randsw.github.io/schema-registry-operator-strimzi/ ssr-operator ssr-operator
+
 cat << EOF | kubectl apply -f -
-apiVersion: roundtable.lsst.codes/v1beta1
+apiVersion: strimziregistryoperator.randsw.code/v1alpha1
 kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry
   namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-cluster
 spec:
-  strimziVersion: v1beta2
-  listener: tls
-  registryImage: confluentinc/cp-schema-registry
-  registryImageTag: "7.9.0"
+  strimziversion:     "v1beta2"
+  securehttp:         true
+  listener:           "tls"
+  compatibilitylevel: "forward"
+  securityprotocol:   "SSL"
+  template:
+    spec:
+      containers:
+        - name: confluent-sr
+          image: confluentinc/cp-schema-registry:7.6.5
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
 EOF
 
 cat << EOF | kubectl apply -f -
@@ -245,5 +191,5 @@ spec:
           service:
             name: confluent-schema-registry
             port:
-              number: 8081
+              number: 443
 EOF

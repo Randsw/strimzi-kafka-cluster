@@ -17,12 +17,14 @@ Run `./cluster-setup.sh` and you got 1 control-plane nodes and 3 worker nodes ku
 
 Run `./kafka-cluster.sh` to deploy 3 Kafka brocker and 3 Kafka KRaft control node and Schema Registry. Schema-registry required special user and topic to storage his data in Kafka so we deploy them too.
 
+Schema-Registry deployed using [ssr-operator.](https://github.com/Randsw/schema-registry-operator-strimzi)
+
 User deployed usind `KafkaUser` CR and named `confluent-schema-registry`.
 Topic deployed usind `KafkaTopic` CR and named `registry-schemas`.
 
 Mow we have running Kafka Cluser with Schema REgistry inside our `kafka` namespace.
 
-You can access Schema registry at `http://schema.kind.cluster`
+You can access Schema registry at `http://schema.kind.cluster` :warning: Schema registry used HTTP/2
 
 To load schema in schema registry see example in `schema-install.sh`
 

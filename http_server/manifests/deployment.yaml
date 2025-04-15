@@ -4,7 +4,7 @@ metadata:
   name: kafka-server
   namespace: kafka
   labels:
-    app: kafka-server
+    app: kafka-stat-server
 spec:
   selector:
     matchLabels:
