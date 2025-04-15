@@ -29,7 +29,7 @@ spec:
         - name:  TOPIC
           value: example-topic
         - name:  SCHEMA_REGISTRY_URL
-          value: confluent-schema-registry:8081
+          value: confluent-schema-registry
         - name:  GROUP_ID
           value: example-group
         - name:  OUT_ADDRESS
