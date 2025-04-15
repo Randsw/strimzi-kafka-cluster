@@ -169,7 +169,7 @@ func main() {
 			if resp.StatusCode != http.StatusOK {
 				logger.Error("Web respond with error", zap.Int("StatusCode", resp.StatusCode))
 			} else {
-				logger.Error("Send payload to web")
+				logger.Info("Send payload to web")
 			}
 		}
 	}()
