@@ -106,7 +106,10 @@ func main() {
 	writer := newKafkaWriter(kafkaURL, topic)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	defer writer.Close()
-	client, err := schemaregistry.NewClient(schemaregistry.NewConfig(fmt.Sprintf("http://%s", schemaRegistryURL)))
+	schemaregistryConfig := schemaregistry.NewConfig(fmt.Sprintf("https://%s", schemaRegistryURL))
+	schemaregistryConfig.SslCaLocation = "/tmp/ca/ca.crt"
+
+	client, err := schemaregistry.NewClient(schemaregistryConfig)
 
 	if err != nil {
 		logger.Error("Failed to create schema registry client: %s\n", zap.String("err", err.Error()))
