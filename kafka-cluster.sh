@@ -159,7 +159,6 @@ metadata:
   labels:
     strimzi.io/cluster: kafka-cluster
 spec:
-  strimziversion:     "v1beta2"
   securehttp:         true
   listener:           "tls"
   compatibilitylevel: "forward"
