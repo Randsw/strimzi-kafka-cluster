@@ -147,7 +147,7 @@ func main() {
 				logger.Error("Failed to create serializer: %s\n", zap.String("err", err.Error()))
 				return
 			} else {
-				logger.Info("produced", zap.String("key", key), zap.String("message", fmt.Sprintf("%s", val)))
+				logger.Info("produced", zap.String("key", key), zap.String("message", fmt.Sprintf("%s", msg.Value)))
 			}
 			time.Sleep(1 * time.Second)
 		}
