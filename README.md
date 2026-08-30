@@ -22,7 +22,7 @@ Schema-Registry deployed using [ssr-operator.](https://github.com/Randsw/schema-
 User deployed usind `KafkaUser` CR and named `confluent-schema-registry`.
 Topic deployed usind `KafkaTopic` CR and named `registry-schemas`.
 
-Mow we have running Kafka Cluser with Schema REgistry inside our `kafka` namespace.
+Now we have running Kafka Cluser with Schema Registry inside our `kafka` namespace.
 
 You can access Schema registry at `http://schema.kind.cluster` :warning: Schema registry used HTTP/2
 
@@ -64,7 +64,7 @@ Run `kubectl apply -f ./http_server/manifests/deployment.yaml` to deploy topic s
 
 Run `kubectl apply -f ./http_server/manifests/service.yaml` to deploy service
 
-Run `kubectl apply -f ./http_server/manifests/service.yaml` to deploy ingress
+Run `kubectl apply -f ./http_server/manifests/ingress.yaml` to deploy ingress
 
 Now statistic server opens at `server.kind.cluster`
 
