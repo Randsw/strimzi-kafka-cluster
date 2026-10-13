@@ -22,6 +22,22 @@ Schema-Registry deployed using [ssr-operator.](https://github.com/Randsw/schema-
 User deployed usind `KafkaUser` CR and named `confluent-schema-registry`.
 Topic deployed usind `KafkaTopic` CR and named `registry-schemas`.
 
+### StrimziSchemaRegistry configuration
+
+The Schema Registry is deployed with a `StrimziSchemaRegistry` CR. Its `spec` supports the following fields:
+
+| Field | Description | Default |
+| --- | --- | --- |
+| `securehttp` | Enable TLS on the Schema Registry REST API endpoint (required). | — |
+| `listener` | Name of the Kafka listener the Schema Registry connects to. | `tls` |
+| `compatibilitylevel` | Default schema compatibility level: `none`, `backward`, `backward_transitive`, `forward`, `forward_transitive`, `full`, `full_transitive`. | `forward` |
+| `securityprotocol` | Kafka security protocol: `SSL`, `SASL_SSL`, `PLAINTEXT`, `SASL_PLAINTEXT`. | `SSL` |
+| `heapopts` | JVM heap options for the Schema Registry, e.g. `-Xms512M -Xmx512M`. | `-Xms512M -Xmx512M` |
+| `tlssecretname` | Name of the secret with the JKS keystore used by the REST API. Leave empty to let the operator generate one signed by the Kafka cluster CA. | `""` |
+| `template` | Kubernetes pod template for the Schema Registry pod (required). | — |
+
+See the [operator documentation](https://github.com/Randsw/schema-registry-operator-strimzi) for details.
+
 Now we have running Kafka Cluser with Schema Registry inside our `kafka` namespace.
 
 You can access Schema registry at `http://schema.kind.cluster` :warning: Schema registry used HTTP/2

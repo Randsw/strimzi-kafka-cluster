@@ -339,6 +339,7 @@ spec:
   listener:           "tls"
   compatibilitylevel: "forward"
   securityprotocol:   "SSL"
+  heapopts:           "-Xms512M -Xmx512M"
   template:
     spec:
       containers:
