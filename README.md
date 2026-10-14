@@ -2,6 +2,8 @@
 
 Producer, Consumer and Schema Registry use mTLS to authentificate and authorize in Kafka Cluser.
 
+Alternative authentication methods are also supported: SASL_SSL (SCRAM-SHA-512 over TLS) and SASL_PLAINTEXT (SCRAM-SHA-512 over plaintext).
+
 ## Requirements
 
 - docker
@@ -21,6 +23,20 @@ Schema-Registry deployed using [ssr-operator.](https://github.com/Randsw/schema-
 
 User deployed usind `KafkaUser` CR and named `confluent-schema-registry`.
 Topic deployed usind `KafkaTopic` CR and named `registry-schemas`.
+
+### Authentication methods
+
+By default `./kafka-cluster.sh` deploys the cluster with TLS (mTLS client certificate) authentication. Two alternative deployment scripts with SASL authentication are available:
+
+| Script | Kafka listener | `securityprotocol` | `KafkaUser` authentication | Description |
+| --- | --- | --- | --- | --- |
+| `./kafka-cluster.sh` | `tls` (port 9093, TLS) | `SSL` | `tls` | mTLS client certificate authentication. The operator builds a keystore and truststore from the KafkaUser secret. |
+| `./kafka-cluster-sasl-ssl.sh` | `saslssl` (port 9093, TLS) | `SASL_SSL` | `scram-sha-512` | SCRAM-SHA-512 authentication over TLS. The operator builds only a truststore and reads the SCRAM credentials directly from the KafkaUser secret. |
+| `./kafka-cluster-sasl-plain.sh` | `saslplain` (port 9092, plaintext) | `SASL_PLAINTEXT` | `scram-sha-512` | SCRAM-SHA-512 authentication over plaintext transport. No certificates or keystore are required. |
+
+Run the script for the authentication method you need, e.g. `./kafka-cluster-sasl-ssl.sh` for SASL_SSL or `./kafka-cluster-sasl-plain.sh` for SASL_PLAINTEXT. Each script deploys the full stack: Strimzi operator, Kafka cluster with the corresponding listener, `registry-schemas` topic, `confluent-schema-registry` KafkaUser, ssr-operator and the Schema Registry with an ingress.
+
+:warning: Only one of these scripts should be run against the same cluster, since they deploy resources with identical names.
 
 ### StrimziSchemaRegistry configuration
 
