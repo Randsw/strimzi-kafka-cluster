@@ -238,8 +238,10 @@ spec:
           type: scram-sha-512
     authorization:
       type: simple
-      superUsers:
-        - confluent-schema-registry
+      # No super users: the Schema Registry authenticates as
+      # confluent-schema-registry, so the ACLs on the KafkaUser below are what
+      # actually grant it access to the registry-schemas topic and the
+      # schema-registry consumer group.
     config:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
@@ -319,9 +321,12 @@ spec:
         host: "*"
 EOF
 
-# Install ssr-operator
+# Install ssr-operator (chart 0.0.17 ships the StrimziSchemaRegistry CRD with
+# clientauth, configuration, kafkastoretopic*, schemaregistrygroupid,
+# mastereligibility, service and networkpolicy fields)
 helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
-  --repo https://randsw.github.io/schema-registry-operator-strimzi/ ssr-operator ssr-operator
+  --repo https://randsw.github.io/schema-registry-operator-strimzi/ \
+  --version 0.0.17 ssr-operator ssr-operator
 
 cat << EOF | kubectl apply -f -
 apiVersion: strimziregistryoperator.randsw.code/v1alpha1
@@ -332,19 +337,67 @@ metadata:
   labels:
     strimzi.io/cluster: kafka-cluster
 spec:
+  # TLS on the Schema Registry REST API. The managed Service exposes
+  # port 443 -> container port 8085 and the API is served over HTTPS.
   securehttp:         true
+  # Mutual TLS on the REST API: clients must present a certificate signed
+  # by the Kafka cluster CA. Only valid together with securehttp: true.
+  # For SASL_PLAINTEXT the operator builds a truststore-only secret from
+  # the Kafka cluster CA when this is enabled.
+  clientauth:         false
+  # Name of the listener in the Kafka CR above.
   listener:           "saslplain"
-  compatibilitylevel: "forward"
   securityprotocol:   "SASL_PLAINTEXT"
+  compatibilitylevel: "forward"
   heapopts:           "-Xms512M -Xmx512M"
+  # Leave empty to let the operator generate the REST API certificate,
+  # signed by the Kafka cluster CA. When set, it must be a DNS label
+  # (lowercase, no dots).
+  tlssecretname:      ""
+  # Storage topic and consumer group used by the Schema Registry. The topic
+  # is created by the KafkaTopic above, so the replication factor only
+  # applies when the topic is auto-created instead.
+  kafkastoretopic:                   "registry-schemas"
+  kafkastoretopicreplicationfactor:  3
+  schemaregistrygroupid:             "schema-registry"
+  mastereligibility:  true
+  # Arbitrary Confluent Schema Registry properties are rendered as
+  # SCHEMA_REGISTRY_* environment variables. Operator-managed keys (for
+  # example kafkastore.bootstrap.servers) are ignored with a warning event.
+  configuration:
+    access.control.allow.origin: "*"
+  # Passed through to the managed Service, e.g. for Prometheus scraping.
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8085"
+    labels:
+      app.kubernetes.io/part-of: kafka-cluster
+  # Creates a NetworkPolicy allowing ingress from pods in the same namespace
+  # and egress to the Kafka bootstrap service. It must stay disabled when the
+  # Schema Registry is reached through an ingress controller running in a
+  # different namespace.
+  networkpolicy:
+    enabled: false
   template:
     spec:
       containers:
         - name: confluent-sr
           image: confluentinc/cp-schema-registry:7.6.5
           imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
       restartPolicy: Always
 EOF
+
+# Wait for the operator to report the Schema Registry as ready
+kubectl wait strimzischemaregistry/confluent-schema-registry --namespace kafka \
+  --for=condition=Ready --timeout=10m
 
 cat << EOF | kubectl apply -f -
 apiVersion: networking.k8s.io/v1
