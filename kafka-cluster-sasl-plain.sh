@@ -321,12 +321,13 @@ spec:
         host: "*"
 EOF
 
-# Install ssr-operator (chart 0.0.17 ships the StrimziSchemaRegistry CRD with
+# Install ssr-operator (chart 0.0.25 ships the StrimziSchemaRegistry CRD with
 # clientauth, configuration, kafkastoretopic*, schemaregistrygroupid,
-# mastereligibility, service and networkpolicy fields)
+# mastereligibility, service (type/port/nodeport passthrough) and networkpolicy
+# (allowcrossnamespaceingress) fields)
 helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
   --repo https://randsw.github.io/schema-registry-operator-strimzi/ \
-  --version 0.0.17 ssr-operator ssr-operator
+  --version 0.0.25 ssr-operator ssr-operator
 
 cat << EOF | kubectl apply -f -
 apiVersion: strimziregistryoperator.randsw.code/v1alpha1
@@ -367,18 +368,25 @@ spec:
   configuration:
     access.control.allow.origin: "*"
   # Passed through to the managed Service, e.g. for Prometheus scraping.
+  # type supports ClusterIP (default), NodePort and LoadBalancer (with an
+  # optional nodeport pin). port defaults to 443 for HTTPS and 80 for plain
+  # HTTP REST endpoints.
   service:
+    type: ClusterIP
+    port: 443
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/port: "8085"
     labels:
       app.kubernetes.io/part-of: kafka-cluster
-  # Creates a NetworkPolicy allowing ingress from pods in the same namespace
-  # and egress to the Kafka bootstrap service. It must stay disabled when the
-  # Schema Registry is reached through an ingress controller running in a
+  # Creates a NetworkPolicy allowing ingress on the REST API port and egress
+  # to the Kafka bootstrap service (plus DNS via kube-dns).
+  # allowcrossnamespaceingress permits ingress from all namespaces, so the
+  # registry stays reachable through the ingress controller running in a
   # different namespace.
   networkpolicy:
-    enabled: false
+    enabled: true
+    allowcrossnamespaceingress: true
   template:
     spec:
       containers:

@@ -22,7 +22,7 @@ Run `./kafka-cluster.sh` to deploy 3 Kafka brocker and 3 Kafka KRaft control nod
 
 Schema-Registry deployed using [ssr-operator.](https://github.com/Randsw/schema-registry-operator-strimzi)
 
-The ssr-operator Helm chart is pinned to a version that ships the current `StrimziSchemaRegistry` CRD. The CRD evolved a lot: the current `spec` includes `clientauth`, `configuration`, `kafkastoretopic`, `kafkastoretopicreplicationfactor`, `schemaregistrygroupid`, `mastereligibility`, `service` and `networkpolicy`. Make sure you install a chart version that carries these fields before you apply a CR that uses them.
+The ssr-operator Helm chart is pinned to a version that ships the current `StrimziSchemaRegistry` CRD. The CRD evolved a lot: the current `spec` includes `clientauth`, `configuration`, `kafkastoretopic`, `kafkastoretopicreplicationfactor`, `schemaregistrygroupid`, `mastereligibility`, `service` (with `type`, `port`, `nodeport`, `annotations` and `labels`) and `networkpolicy` (with `enabled` and `allowcrossnamespaceingress`). Make sure you install a chart version that carries these fields (chart `0.0.25` or newer) before you apply a CR that uses them.
 
 User deployed usind `KafkaUser` CR and named `confluent-schema-registry`. The name **must match the `StrimziSchemaRegistry` CR name**, because the operator looks up the KafkaUser secret by the CR name.
 
@@ -63,8 +63,12 @@ The Schema Registry is deployed with a `StrimziSchemaRegistry` CR. Its `spec` su
 | `schemaregistrygroupid` | Kafka consumer group id used by the Schema Registry. | `schema-registry` |
 | `mastereligibility` | Whether this instance may be elected master. | `true` |
 | `configuration` | Arbitrary Confluent Schema Registry properties (dotted keys) rendered as `SCHEMA_REGISTRY_*` environment variables. Operator-managed keys are ignored with a `ConfigKeyOverridden` warning event. | unset |
+| `service.type` | Kubernetes Service type: `ClusterIP`, `NodePort` or `LoadBalancer`. | `ClusterIP` |
+| `service.port` | Overrides the Service port. Defaults to `80` for plain HTTP and `443` for TLS REST endpoints. | unset |
+| `service.nodeport` | Pins the node port when `service.type` is `NodePort` or `LoadBalancer`. When unset, Kubernetes allocates one automatically. | unset |
 | `service.annotations` / `service.labels` | Passed through to the managed Service, e.g. Prometheus scrape annotations. | unset |
-| `networkpolicy.enabled` | Create a NetworkPolicy allowing ingress on the listener port from the same namespace and egress to the Kafka bootstrap service. Keep it disabled when the registry is reached through an ingress controller in another namespace. | `false` |
+| `networkpolicy.enabled` | Create a NetworkPolicy allowing ingress on the REST API port and egress to the Kafka bootstrap service (plus DNS via kube-dns). | `false` |
+| `networkpolicy.allowcrossnamespaceingress` | When `true` (and `networkpolicy.enabled` is `true`), allows ingress to the Schema Registry from all namespaces instead of only the namespace of the `StrimziSchemaRegistry` resource, so the registry stays reachable through an ingress controller running in a different namespace. | `false` |
 | `template` | Kubernetes pod template for the Schema Registry pod (required). | — |
 
 :information_source: Only a single replica is supported. With `securehttp: true`, the generated REST certificate SANs are DNS-only while the Schema Registry `host.name` is the pod IP, so HTTPS forwarding between replicas would break.
