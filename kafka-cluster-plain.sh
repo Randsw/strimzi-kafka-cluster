@@ -281,13 +281,13 @@ spec:
     cleanup.policy: compact
 EOF
 
-# Install ssr-operator (chart 0.0.25 ships the StrimziSchemaRegistry CRD with
-# clientauth, configuration, kafkastoretopic*, schemaregistrygroupid,
-# mastereligibility, service (type/port/nodeport passthrough) and networkpolicy
-# (allowcrossnamespaceingress) fields)
+# Install ssr-operator (chart 0.0.38 ships the current StrimziSchemaRegistry
+# CRD with clientauth, configuration, kafkastoretopic*, schemaregistrygroupid,
+# mastereligibility, replicas, keystoretype, service (type/port/nodeport
+# passthrough) and networkpolicy (allowcrossnamespaceingress) fields)
 helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
   --repo https://randsw.github.io/schema-registry-operator-strimzi/ \
-  --version 0.0.25 ssr-operator ssr-operator
+  --version 0.0.38 ssr-operator ssr-operator
 
 cat << EOF | kubectl apply -f -
 apiVersion: strimziregistryoperator.randsw.code/v1alpha1
@@ -313,8 +313,12 @@ spec:
   heapopts:           "-Xms512M -Xmx512M"
   # Leave empty to let the operator generate the REST API certificate,
   # signed by the Kafka cluster CA. When set, it must be a DNS label
-  # (lowercase, no dots).
+  # (lowercase, no dots) and the secret must hold a JKS/PKCS12 keystore or a
+  # standard kubernetes.io/tls (PEM) pair (see the operator README).
   tlssecretname:      ""
+  # Keystore format of a user-provided tlssecretname: JKS (default) or PKCS12.
+  # No effect while tlssecretname is empty (the generated keystore is JKS).
+  keystoretype:       "JKS"
   # Storage topic and consumer group used by the Schema Registry. The topic
   # is created by the KafkaTopic above, so the replication factor only
   # applies when the topic is auto-created instead.
@@ -322,6 +326,10 @@ spec:
   kafkastoretopicreplicationfactor:  3
   schemaregistrygroupid:             "schema-registry"
   mastereligibility:  true
+  # Number of Schema Registry replicas. Multi-replica requires either
+  # securehttp: false or a user-provided tlssecretname whose certificate
+  # covers the replica addresses; this example runs a single replica.
+  replicas:           1
   # Arbitrary Confluent Schema Registry properties are rendered as
   # SCHEMA_REGISTRY_* environment variables. Operator-managed keys (for
   # example kafkastore.bootstrap.servers) are ignored with a warning event.
@@ -351,7 +359,7 @@ spec:
     spec:
       containers:
         - name: confluent-sr
-          image: confluentinc/cp-schema-registry:7.6.5
+          image: confluentinc/cp-schema-registry:8.4.1
           imagePullPolicy: IfNotPresent
           resources:
             requests:

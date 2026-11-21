@@ -22,7 +22,7 @@ Run `./kafka-cluster.sh` to deploy 3 Kafka brocker and 3 Kafka KRaft control nod
 
 Schema-Registry deployed using [ssr-operator.](https://github.com/Randsw/schema-registry-operator-strimzi)
 
-The ssr-operator Helm chart is pinned to a version that ships the current `StrimziSchemaRegistry` CRD. The CRD evolved a lot: the current `spec` includes `clientauth`, `configuration`, `kafkastoretopic`, `kafkastoretopicreplicationfactor`, `schemaregistrygroupid`, `mastereligibility`, `service` (with `type`, `port`, `nodeport`, `annotations` and `labels`) and `networkpolicy` (with `enabled` and `allowcrossnamespaceingress`). Make sure you install a chart version that carries these fields (chart `0.0.25` or newer) before you apply a CR that uses them.
+The ssr-operator Helm chart is pinned to `0.0.38` (operator `1.20.0`), which ships the current `StrimziSchemaRegistry` CRD. The CRD evolved a lot: the current `spec` includes `clientauth`, `keystoretype`, `configuration`, `kafkastoretopic`, `kafkastoretopicreplicationfactor`, `schemaregistrygroupid`, `mastereligibility`, `replicas`, `service` (with `type`, `port`, `nodeport`, `annotations` and `labels`) and `networkpolicy` (with `enabled` and `allowcrossnamespaceingress`). Make sure you install a chart version that carries these fields (chart `0.0.38` or newer) before you apply a CR that uses them.
 
 User deployed usind `KafkaUser` CR and named `confluent-schema-registry`. The name **must match the `StrimziSchemaRegistry` CR name**, because the operator looks up the KafkaUser secret by the CR name.
 
@@ -57,11 +57,13 @@ The Schema Registry is deployed with a `StrimziSchemaRegistry` CR. Its `spec` su
 | `compatibilitylevel` | Default schema compatibility level: `none`, `backward`, `backward_transitive`, `forward`, `forward_transitive`, `full`, `full_transitive`. | `forward` |
 | `securityprotocol` | Kafka security protocol: `SSL`, `SASL_SSL`, `PLAINTEXT`, `SASL_PLAINTEXT`. The authentication method is auto-detected from the referenced `KafkaUser`. | `SSL` |
 | `heapopts` | JVM heap options for the Schema Registry, e.g. `-Xms512M -Xmx512M`. | `-Xms512M -Xmx512M` |
-| `tlssecretname` | Name of the secret with the JKS keystore used by the REST API. Leave empty to let the operator generate one signed by the Kafka cluster CA. When set it must be a DNS label (lowercase, no dots). | `""` |
+| `tlssecretname` | Name of the secret with the TLS material for the REST API. Leave empty to let the operator generate a JKS keystore signed by the Kafka cluster CA (renewed automatically before expiry). When set it must be a DNS label (lowercase, no dots) and the secret must hold either a JKS keystore (`tls-keystore.jks`, `keystore_password`, `key_password`), a PKCS12 keystore (`tls-keystore.p12`, `keystore_password`, `key_password`) or a standard `kubernetes.io/tls` PEM pair (`tls.crt`, `tls.key`, optional `ca.crt`); PEM secrets are converted into an operator-managed derived JKS secret. | `""` |
+| `keystoretype` | Format of a user-provided `tlssecretname`: `JKS` or `PKCS12`. Has no effect for PEM secrets (always converted to JKS) or when `tlssecretname` is empty (the generated secret is JKS). | `JKS` |
 | `kafkastoretopic` | Kafka topic used to store schemas. | `registry-schemas` |
 | `kafkastoretopicreplicationfactor` | Replication factor for the auto-created storage topic. Must be `>= 1`. Leave unset to keep Confluent's built-in default (`3`). | unset |
 | `schemaregistrygroupid` | Kafka consumer group id used by the Schema Registry. | `schema-registry` |
-| `mastereligibility` | Whether this instance may be elected master. | `true` |
+| `mastereligibility` | Whether the replicas of this CR may be elected master. | `true` |
+| `replicas` | Number of Schema Registry replicas. See the multi-replica caveat below. | `1` |
 | `configuration` | Arbitrary Confluent Schema Registry properties (dotted keys) rendered as `SCHEMA_REGISTRY_*` environment variables. Operator-managed keys are ignored with a `ConfigKeyOverridden` warning event. | unset |
 | `service.type` | Kubernetes Service type: `ClusterIP`, `NodePort` or `LoadBalancer`. | `ClusterIP` |
 | `service.port` | Overrides the Service port. Defaults to `80` for plain HTTP and `443` for TLS REST endpoints. | unset |
@@ -71,7 +73,9 @@ The Schema Registry is deployed with a `StrimziSchemaRegistry` CR. Its `spec` su
 | `networkpolicy.allowcrossnamespaceingress` | When `true` (and `networkpolicy.enabled` is `true`), allows ingress to the Schema Registry from all namespaces instead of only the namespace of the `StrimziSchemaRegistry` resource, so the registry stays reachable through an ingress controller running in a different namespace. | `false` |
 | `template` | Kubernetes pod template for the Schema Registry pod (required). | — |
 
-:information_source: Only a single replica is supported. With `securehttp: true`, the generated REST certificate SANs are DNS-only while the Schema Registry `host.name` is the pod IP, so HTTPS forwarding between replicas would break.
+:information_source: `replicas` defaults to `1`. Multiple replicas are supported with `securehttp: false`. With `securehttp: true`, the operator-generated REST certificate SANs are DNS-only while each replica advertises its pod IP as `host.name`, so inter-instance HTTPS forwarding would fail TLS verification. Combining `replicas > 1` with `securehttp: true` therefore requires a user-provided `tlssecretname` whose certificate covers the replica addresses; without it the operator rejects the CR (`status.status: InvalidSpec`, reason `ReplicasRequireUserTLSSecret`) and creates no Deployment. The scripts in this repository deploy a single replica.
+
+The scripts use `confluentinc/cp-schema-registry:8.4.1` (the current recommended line). The 7.6.x line is still supported as a legacy option; Schema Registry 8.x requires a Kafka 3.x+ broker, which the Strimzi `4.2.0` cluster in these scripts satisfies.
 
 See the [operator documentation](https://github.com/Randsw/schema-registry-operator-strimzi) for the full reference.
 
