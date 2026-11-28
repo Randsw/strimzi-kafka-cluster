@@ -321,16 +321,26 @@ spec:
         host: "*"
 EOF
 
-# Install ssr-operator (chart 0.0.38 ships the current StrimziSchemaRegistry
-# CRD with clientauth, configuration, kafkastoretopic*, schemaregistrygroupid,
+# Install ssr-operator (chart 0.0.42 / operator 1.21.0). The StrimziSchemaRegistry
+# CRD is served only as strimziregistryoperator.randsw.code/v1beta1: operator
+# 1.21.0 removed the v1alpha1 version. The spec fields used below are unchanged
+# (clientauth, configuration, kafkastoretopic*, schemaregistrygroupid,
 # mastereligibility, replicas, keystoretype, service (type/port/nodeport
-# passthrough) and networkpolicy (allowcrossnamespaceingress) fields)
+# passthrough) and networkpolicy (allowcrossnamespaceingress)); spec.securehttp
+# and spec.template remain required.
 helm upgrade --install --wait --timeout 35m --atomic --namespace kafka --create-namespace \
   --repo https://randsw.github.io/schema-registry-operator-strimzi/ \
-  --version 0.0.38 ssr-operator ssr-operator
+  --version 0.0.42 ssr-operator ssr-operator
+
+# Helm installs CRDs from the chart's crds/ directory on `install` but never
+# upgrades them on `upgrade`. Apply the pinned CRD explicitly so an existing
+# release still serving the v1alpha1 CRD is switched to the v1beta1 schema
+# before the CR below is created.
+helm show crds ssr-operator --repo https://randsw.github.io/schema-registry-operator-strimzi/ \
+  --version 0.0.42 | kubectl apply --server-side --force-conflicts -f -
 
 cat << EOF | kubectl apply -f -
-apiVersion: strimziregistryoperator.randsw.code/v1alpha1
+apiVersion: strimziregistryoperator.randsw.code/v1beta1
 kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry

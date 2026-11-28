@@ -22,7 +22,22 @@ Run `./kafka-cluster.sh` to deploy 3 Kafka brocker and 3 Kafka KRaft control nod
 
 Schema-Registry deployed using [ssr-operator.](https://github.com/Randsw/schema-registry-operator-strimzi)
 
-The ssr-operator Helm chart is pinned to `0.0.38` (operator `1.20.0`), which ships the current `StrimziSchemaRegistry` CRD. The CRD evolved a lot: the current `spec` includes `clientauth`, `keystoretype`, `configuration`, `kafkastoretopic`, `kafkastoretopicreplicationfactor`, `schemaregistrygroupid`, `mastereligibility`, `replicas`, `service` (with `type`, `port`, `nodeport`, `annotations` and `labels`) and `networkpolicy` (with `enabled` and `allowcrossnamespaceingress`). Make sure you install a chart version that carries these fields (chart `0.0.38` or newer) before you apply a CR that uses them.
+The ssr-operator Helm chart is pinned to `0.0.42` (operator `1.21.0`), which ships the current `StrimziSchemaRegistry` CRD. Operator `1.21.0` promoted the CRD to `strimziregistryoperator.randsw.code/v1beta1` and **stopped serving `v1alpha1`**, so every `StrimziSchemaRegistry` resource must use:
+
+```yaml
+apiVersion: strimziregistryoperator.randsw.code/v1beta1
+kind: StrimziSchemaRegistry
+```
+
+The scripts in this repository already use `v1beta1`. The current `spec` includes `clientauth`, `keystoretype`, `configuration`, `kafkastoretopic`, `kafkastoretopicreplicationfactor`, `schemaregistrygroupid`, `mastereligibility`, `replicas`, `service` (with `type`, `port`, `nodeport`, `annotations` and `labels`) and `networkpolicy` (with `enabled` and `allowcrossnamespaceingress`); `securehttp` and `template` are required. Make sure you install chart `0.0.42` or newer before you apply a CR that uses them.
+
+Helm never upgrades CRDs shipped in a chart's `crds/` directory on `helm upgrade`, so the scripts re-apply the CRD from the pinned chart (`helm show crds ssr-operator --repo https://randsw.github.io/schema-registry-operator-strimzi/ --version 0.0.42 | kubectl apply --server-side --force-conflicts -f -`) before creating the `StrimziSchemaRegistry` resource.
+
+When upgrading an **existing** cluster that still runs chart `0.0.38` or older, the stored CRs are `v1alpha1` objects and must be recreated as `v1beta1`:
+
+1. Back them up while `v1alpha1` is still served: `kubectl get strimzischemaregistries -A -o yaml > cr-backup.yaml`.
+2. Delete them (`kubectl delete strimzischemaregistries --all -A`); the operator has no finalizer and does not block deletion. Kubernetes garbage-collects the owned Deployment, Service and secrets.
+3. Run the deployment script. It applies the `v1beta1` CRD and creates the `v1beta1` CR again; the operator recreates the owned Deployment, Service and secrets. If you customised the CR spec, rewrite the backup's `apiVersion` to `strimziregistryoperator.randsw.code/v1beta1` and re-apply it instead of relying on the script's default CR.
 
 User deployed usind `KafkaUser` CR and named `confluent-schema-registry`. The name **must match the `StrimziSchemaRegistry` CR name**, because the operator looks up the KafkaUser secret by the CR name.
 
@@ -47,7 +62,7 @@ The `KafkaUser` name is intentionally **not** listed in `authorization.superUser
 
 ### StrimziSchemaRegistry configuration
 
-The Schema Registry is deployed with a `StrimziSchemaRegistry` CR. Its `spec` supports the following fields:
+The Schema Registry is deployed with a `StrimziSchemaRegistry` CR using `apiVersion: strimziregistryoperator.randsw.code/v1beta1` (the only version served since operator `1.21.0`). Its `spec` supports the following fields:
 
 | Field | Description | Default |
 | --- | --- | --- |
